@@ -6,6 +6,8 @@ from django.core.files.base import ContentFile
 from django.db import models
 from django.utils.text import slugify
 
+from users.models import User
+
 
 class Category(models.Model):
     """Модель категории"""
@@ -13,8 +15,6 @@ class Category(models.Model):
     slug = models.SlugField(unique=True, blank=True)
     image = models.ImageField(
         upload_to="category/images/",
-        null=False,
-        blank=True,
         verbose_name='Изображение'
     )
     subcategory = models.ForeignKey(
@@ -32,7 +32,7 @@ class Category(models.Model):
         ordering = ['name']
 
     def __str__(self):
-        return f'{self.name}' + f' ({self.subcategory})' if self.subcategory else ''
+        return f'{self.name} ({self.subcategory})' if self.subcategory else f'{self.name}'
 
     def save(self, *args, **kwargs):
         if not self.id and not self.slug:
@@ -40,8 +40,8 @@ class Category(models.Model):
         super().save(*args, **kwargs)
 
 
-class Products(models.Model):
-    """Модель продуктов"""
+class Product(models.Model):
+    """Модель продукта"""
     name = models.CharField(max_length=50, unique=True, verbose_name='Название')
     slug = models.SlugField(unique=True, blank=True)
     image = models.ImageField(
@@ -54,6 +54,7 @@ class Products(models.Model):
     category = models.ForeignKey(
         'Category',
         on_delete=models.SET_NULL,
+        null=True,
         related_name='products',
         verbose_name='Категории',
     )
@@ -67,7 +68,7 @@ class Products(models.Model):
         verbose_name_plural = "Продукты"
         ordering = ['name']
 
-    def __str_(self):
+    def __str__(self):
         return f'{self.category} - {self.name}'
 
     def save(self, *args, **kwargs):
@@ -108,3 +109,33 @@ class Products(models.Model):
             getattr(self, field_name).save(thumb_filename, ContentFile(thumb_io.getvalue()), save=False)
 
         super().save(update_fields=['image_small', 'image_medium', 'image_large'])
+
+
+class Cart(models.Model):
+    """Коризна пользователя"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='cart', verbose_name='Пользователь')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
+    updated_at = models.DateField(auto_now=True, verbose_name="Дата обновления")
+
+    def total_price(self):
+        return sum(item.total_price_item_cart() for item in self.cart_items.all())
+
+    def __str__(self):
+        return f'Корзина пользователя {self.user}. Сумма {self.total_price()} руб.'
+
+    class Meta:
+        verbose_name = 'Корзина'
+        verbose_name_plural = "Корзины"
+        ordering = ['user']
+
+class CartItem(models.Model):
+    """Модель товара в корзине"""
+    cart_id = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='cart_items', verbose_name='Корзина')
+    product_id = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='cart_items', verbose_name='Продукт')
+    quantity = models.PositiveIntegerField(default=1, verbose_name='Количество товара')
+
+    def total_price_item_cart(self):
+        return self.product_id.price * self.quantity
+
+    def __str__(self):
+        return f'{self.product_id.name} - {self.quantity} шт. - {self.total_price_item_cart()}'
