@@ -14,5 +14,6 @@ router.register("cart-item", views.CartItemViewSet, basename="cart-item")
 urlpatterns = [
     path('update-cart-item/', views.UpdateCartItemView.as_view(), name='update-cart-item'),
     path('get-cart-items-list/', views.CartView.as_view(), name= "get-cart-items-list"),
+    path('clear_cart/',views.ClearCartAPIView.as_view() ,name ='clear_cart')
 
               ] + router.urls
