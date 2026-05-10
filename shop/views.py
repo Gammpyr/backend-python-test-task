@@ -73,31 +73,31 @@ class UpdateCartItemView(APIView):
         except (ValueError, TypeError):
             return Response({'error': 'Неверное значение quantity'}, status=status.HTTP_400_BAD_REQUEST)
 
-        increase_q = request.data.get('increase', False)
-        decrease_q = request.data.get('decrease', False)
+        increase_q = request.data.get('increase', 0)
+        decrease_q = request.data.get('decrease', 0)
 
         cart, _ = Cart.objects.get_or_create(user=user)
 
         cart_item, created_item = CartItem.objects.get_or_create(
-            cart_id=cart,
-            product_id=product,
+            cart=cart,
+            product=product,
             defaults={"quantity": quantity if quantity > 0 else 1}
         )
 
         cur_quantity = cart_item.quantity
         if not created_item:
             if decrease_q:
-                cur_quantity -= 1
+                cur_quantity -= decrease_q
             elif increase_q:
-                cur_quantity += 1
+                cur_quantity += increase_q
             else:
-                cur_quantity += quantity
+                cur_quantity = quantity
 
             if cur_quantity <= 0:
                 cart_item.delete()
                 return Response(
                     {
-                        'message': f'Товар {product.name} удален из корзины',
+                        'message': f"Товар '{product.name}' удален из корзины",
                     }
                 )
             else:
@@ -122,10 +122,19 @@ class CartView(APIView):
         for item in cart_obj.cart_items.all():
             cart_data.append({
                 "id": item.id,
-                "product_id": item.product_id.pk,
-                "product_name": item.product_id.name,
+                "product_id": item.product.pk,
+                "product_name": item.product.name,
                 "quantity": item.quantity,
                 "total_price": item.total_price_item_cart()
             })
 
         return Response(cart_data)
+
+
+class ClearCartAPIView(APIView):
+    """Очистка корзины"""
+    permission_classes = [IsAuthenticated]
+    def post(self, request):
+        cart = request.user.cart
+        cart.clear_cart()
+        return Response({"message": "Корзина очищена"})
