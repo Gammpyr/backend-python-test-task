@@ -120,6 +120,9 @@ class Cart(models.Model):
     def total_price(self):
         return sum(item.total_price_item_cart() for item in self.cart_items.all())
 
+    def clear_cart(self):
+        self.cart_items.all().delete()
+
     def __str__(self):
         return f'Корзина пользователя {self.user}. Сумма {self.total_price()} руб.'
 
@@ -130,12 +133,13 @@ class Cart(models.Model):
 
 class CartItem(models.Model):
     """Модель товара в корзине"""
-    cart_id = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='cart_items', verbose_name='Корзина')
-    product_id = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='cart_items', verbose_name='Продукт')
+    cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='cart_items', verbose_name='Корзина')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='cart_items', verbose_name='Продукт')
     quantity = models.PositiveIntegerField(default=1, verbose_name='Количество товара')
 
     def total_price_item_cart(self):
-        return self.product_id.price * self.quantity
+        return self.product.price * self.quantity
 
     def __str__(self):
-        return f'{self.product_id.name} - {self.quantity} шт. - {self.total_price_item_cart()}'
+        return f'{self.product.name} - {self.quantity} шт. - {self.total_price_item_cart()}'
+
