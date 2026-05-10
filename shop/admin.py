@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib import admin
 
-from shop.models import Category, Product, Cart
+from shop.models import Category, Product, Cart, CartItem
 
 
 @admin.register(Category)
@@ -39,8 +39,14 @@ class ProductAdmin(admin.ModelAdmin):
         }),
     )
 
+class CartItemInline(admin.TabularInline):
+    model = CartItem
+    extra = 0
+
 @admin.register(Cart)
 class CartAdmin(admin.ModelAdmin):
     list_display = ['user', 'created_at', 'updated_at']
     list_filter = ['user']
     search_fields = ('user', )
+    inlines = [CartItemInline]
+
